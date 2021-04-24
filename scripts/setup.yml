@@ -1,0 +1,122 @@
+---
+- name: "Setup.yml"
+  hosts: localhost
+  gather_facts: yes
+  become: yes
+  tasks:
+  - name: Colorize root shell prompt
+    lineinfile:
+      path: /root/.bashrc
+      line: 'export PS1="\[\033[38;5;11m\]\u\[$(tput sgr0)\]\[\033[38;5;15m\]@\h:\[$(tput sgr0)\]\[\033[38;5;6m\][\w]:\[$(tput sgr0)\]\[\033[38;5;15m\] \[$(tput sgr0)\]"'
+      state: present
+
+  - name: Alias vi to vim
+    lineinfile:
+      path: /root/.bashrc
+      line: "alias vi='vim'"
+      state: present
+
+  - name: Create vim configuration file
+    file:
+      path: /root/.vimrc
+      state: touch
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Configure vim
+    blockinfile:
+      path: /root/.vimrc
+      block: |
+        set nocompatible
+        set number
+        set autoindent
+        syntax on
+        highlight Comment ctermfg=LightCyan
+      marker: ""
+      state: present
+
+  - name: Enable root SSH login
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: "^PermitRootLogin"
+      line: "PermitRootLogin yes"
+      state: present
+
+  - name: Disable quiet boot mode
+    lineinfile:
+      path: /etc/default/grub
+      regexp: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet"'
+      line: 'GRUB_CMDLINE_LINUX_DEFAULT=""'
+      state: present
+
+  - name: Update grub2
+    command: update-grub2
+
+  - name: Upgrade all packages
+    apt:
+      update_cache: yes
+      upgrade: dist
+
+  - name: Install packages
+    apt:
+      name: "{{ packages }}"
+      state: latest
+    vars:
+      packages:
+      - bash-completion
+      - ccze
+      - curl
+      - git
+      - net-tools
+      - rsync
+      - screen
+      - tcpdump
+      - vim
+      - wget
+
+  - name: Install dependencies for VirtualBox Guest Additions
+    apt:
+      name: "{{ packages }}"
+      state: latest
+    vars:
+      packages:
+      - dkms
+      - make
+      - "linux-headers-{{ ansible_kernel }}"
+    when:
+      - ansible_virtualization_type == "virtualbox"
+
+  - name: Mount VBoxGuestAdditions.iso
+    mount:
+      path: /mnt
+      src: /home/packer/VBoxGuestAdditions.iso
+      fstype: iso9660
+      opts: ro,loop
+      state: mounted
+    when: ansible_virtualization_type == "virtualbox"
+
+  - name: Install VBoxGuestAdditions.iso
+    command: sh /mnt/VBoxLinuxAdditions.run
+    register: vbox_result
+    failed_when: "'Running kernel modules will not be replaced until \nthe system is restarted' not in vbox_result.stdout"
+    when: ansible_virtualization_type == "virtualbox"
+
+  - name: Umount VBoxGuestAdditions.iso
+    mount:
+      path: /mnt
+      state: absent
+    when: ansible_virtualization_type == "virtualbox"
+
+  - name: Delete VBoxGuestAdditions.iso
+    file:
+      path: /home/packer/VBoxGuestAdditions.iso
+      state: absent
+    when: ansible_virtualization_type == "virtualbox"
+
+  - name: Install open-vm-tools
+    apt:
+      name: open-vm-tools
+      state: latest
+    when:
+      - ansible_virtualization_type == "VMware"

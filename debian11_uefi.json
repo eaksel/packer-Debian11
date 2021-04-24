@@ -1,0 +1,82 @@
+{
+  "variables": {
+      "vm_name": "debian-11.0.0-rc1-amd64",
+      "numvcpus": "1",
+      "memsize": "1024",
+      "disk_size": "40960",
+      "iso_url": "https://cdimage.debian.org/cdimage/bullseye_di_rc1/amd64/iso-cd/debian-bullseye-DI-rc1-amd64-netinst.iso",
+      "iso_checksum": "bb09a738bf722573125b4f532932cc07c13f3165222c2e4238dde4a3ee74c5ec",
+      "ssh_username" : "packer",
+      "ssh_password" : "packer",
+      "boot_wait": "5s"
+    },
+    "builders": [
+      {
+        "type": "vmware-iso",
+        "boot_command": ["e<down><down><down><end>priority=critical auto=true preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg<leftCtrlOn>x<leftCtrlOff>"],
+        "boot_wait": "{{ user `boot_wait` }}",
+        "disk_size": "{{ user `disk_size` }}",
+        "disk_type_id": "0",
+        "guest_os_type": "debian10-64",
+        "headless": false,
+        "http_directory": "http",
+        "iso_checksum": "{{ user `iso_checksum` }}",
+        "iso_url": "{{ user `iso_url` }}",
+        "shutdown_command": "echo 'packer'|sudo -S shutdown -P now",
+        "ssh_password": "{{ user `ssh_password` }}",
+        "ssh_port": 22,
+        "ssh_username": "{{ user `ssh_username` }}",
+        "ssh_timeout": "30m",
+        "vm_name": "{{ user `vm_name` }}",
+        "vmx_data": {
+          "memsize": "{{ user `memsize` }}",
+          "numvcpus": "{{ user `numvcpus` }}",
+          "virtualHW.version": "14",
+          "firmware": "efi"
+        }
+      },
+      {
+        "type": "virtualbox-iso",
+        "boot_command": ["e<down><down><down><end>priority=critical auto=true preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg<leftCtrlOn>x<leftCtrlOff>"],
+        "boot_wait": "{{ user `boot_wait` }}",
+        "disk_size": "{{ user `disk_size` }}",
+        "headless": false,
+        "guest_os_type": "Debian_64",
+        "http_directory": "http",
+        "iso_checksum": "{{ user `iso_checksum` }}",
+        "iso_url": "{{ user `iso_url` }}",
+        "shutdown_command": "echo 'packer'|sudo -S shutdown -P now",
+        "ssh_password": "{{ user `ssh_password` }}",
+        "ssh_port": 22,
+        "ssh_username": "{{ user `ssh_username` }}",
+        "ssh_timeout": "30m",
+        "vm_name": "{{ user `vm_name` }}",
+        "iso_interface": "sata",
+        "vboxmanage": [
+          ["modifyvm", "{{.Name}}", "--memory", "{{ user `memsize` }}"],
+          ["modifyvm", "{{.Name}}", "--cpus", "{{ user `numvcpus` }}"],
+          ["modifyvm", "{{.Name}}", "--firmware", "EFI"]
+        ]
+      }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "execute_command": "echo 'packer'|{{.Vars}} sudo -S -E bash '{{.Path}}'",
+      "inline": [
+        "apt -y update && apt -y upgrade",
+        "apt -y install python3-pip",
+        "pip3 --no-cache-dir install ansible"
+      ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "scripts/setup.yml"
+    },
+    {
+      "type": "shell",
+      "execute_command": "echo 'packer'|{{.Vars}} sudo -S -E bash '{{.Path}}'",
+      "scripts": ["scripts/cleanup.sh"]
+    }
+  ]
+}
