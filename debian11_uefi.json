@@ -1,11 +1,11 @@
 {
   "variables": {
-      "vm_name": "debian-11.0.0-rc1-amd64",
+      "vm_name": "debian-11.0.0-amd64",
       "numvcpus": "1",
       "memsize": "1024",
       "disk_size": "40960",
-      "iso_url": "https://cdimage.debian.org/cdimage/bullseye_di_rc1/amd64/iso-cd/debian-bullseye-DI-rc1-amd64-netinst.iso",
-      "iso_checksum": "bb09a738bf722573125b4f532932cc07c13f3165222c2e4238dde4a3ee74c5ec",
+      "iso_url": "https://cdimage.debian.org/cdimage/release/11.0.0/amd64/iso-cd/debian-11.0.0-amd64-netinst.iso",
+      "iso_checksum": "ae6d563d2444665316901fe7091059ac34b8f67ba30f9159f7cef7d2fdc5bf8a",
       "ssh_username" : "packer",
       "ssh_password" : "packer",
       "boot_wait": "5s"
